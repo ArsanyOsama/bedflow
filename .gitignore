@@ -1,0 +1,18 @@
+﻿# Python
+__pycache__/
+*.pyc
+.venv/
+backend/.env
+
+# Node
+node_modules/
+dist/
+.env
+.env.local
+
+# Expo
+.expo/
+nurse-app/.env
+
+# Supabase
+supabase/.env
