@@ -1,0 +1,124 @@
+/* ── FONTS (Must be at the very top!) ──────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── BASE RESETS ────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #F5F4F0;   /* --surface: warm off-white, Figma spec */
+    color: #0D1B2A;               /* --text-primary */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #F0F2F5; }
+  ::-webkit-scrollbar-thumb { background: #C9D0DA; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #8896AB; }
+}
+
+/* ── UTILITY CLASSES ─────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Arabic text — Cairo font + RTL */
+  .arabic {
+    font-family: 'Cairo', sans-serif;
+    direction: rtl;
+    unicode-bidi: bidi-override;
+  }
+
+  /* Roboto Mono for bed IDs, numbers, data */
+  .font-mono {
+    font-family: 'Roboto Mono', monospace;
+  }
+
+  /* Live pulse dot animation */
+  .live-dot {
+    @apply w-2 h-2 rounded-full bg-[#06D6A0] animate-pulse;
+  }
+
+  /* Glass morphism card (used in city map overlays) */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(228, 232, 238, 0.8);
+    border-radius: 12px;
+  }
+
+  /* Status badge pill */
+  .status-pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-xs font-medium;
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors cursor-pointer;
+  }
+
+  .nav-item-inactive {
+    @apply text-white/60 hover:text-white/90 hover:bg-white/5;
+  }
+
+  .nav-item-active {
+    @apply text-[#00C896] bg-[#00C896]/10 font-medium;
+  }
+}
+
+/* ── COMPONENT OVERRIDES ───────────────────────────────────────────────────── */
+@layer components {
+  /* Card base */
+  .card {
+    @apply bg-white rounded-card border border-[#E4E8EE] shadow-card;
+  }
+
+  /* Alert banner (surge events) */
+  .alert-banner-critical {
+    background: #EF233C;
+    color: white;
+    border-left: 4px solid #C41E3A;
+    animation: pulseBorder 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseBorder {
+    0%, 100% { border-left-color: #C41E3A; }
+    50%       { border-left-color: #FF6B6B; }
+  }
+
+  /* Bed card base */
+  .bed-card {
+    @apply relative flex flex-col gap-1 p-3 rounded-[10px] min-h-[80px] w-full
+           border border-transparent hover:shadow-card-hover transition-all cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-[#00C896];
+  }
+
+  /* Dashboard stat card */
+  .stat-card {
+    @apply card p-5 flex flex-col gap-2;
+  }
+}
+
+/* ── LEAFLET MAP OVERRIDES ───────────────────────────────────────────────────── */
+.leaflet-container {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  border-radius: 12px;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+  border: 1px solid #E4E8EE;
+}
+
+.leaflet-popup-content {
+  margin: 14px 16px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
