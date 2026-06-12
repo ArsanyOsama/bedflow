@@ -58,31 +58,45 @@ export interface UserProfile {
   phone?: string
 }
 
+// Fix B-13 — add changed_by_name to BedStatusLog
 export interface BedStatusLog {
   id: string
   bed_id: string
   old_status: BedStatus | null
   new_status: BedStatus
   changed_by: string | null
+  changed_by_name?: string | null      // NEW — from bed_history_with_names view
+  changed_by_name_ar?: string | null   // NEW
+  changed_by_role?: string | null      // NEW
   changed_at: string
 }
 
+// Fix WeeklyMetrics to match new reports.py response shape
 export interface WeeklyMetrics {
-  hospital_id: string
-  hospital_name_ar: string
+  hospital_id:      string
   hospital_name_en: string
-  period_days: number
-  generated_at: string
+  hospital_name_ar: string
+  period_days:      number
+  generated_at:     string
   snapshot: {
-    total_beds: number
+    total_beds:     number
     available_beds: number
-    occupied_beds: number
+    occupied_beds:  number
     occupancy_rate: number
   }
-  weekly_metrics: {
+  analytics: {
+    avg_occupancy:        number
+    beds_made_available:  number
+    revenue_recovered:    number
+    efficiency_score:     number
     total_status_changes: number
-    beds_made_available: number
-    estimated_egp_recovered: number
-    note: string
+    bed_price_per_day:    number
+    currency:             string
   }
+  timeline: Array<{
+    date:           string
+    occupancy_rate: number
+    available_beds: number
+    occupied_beds:  number
+  }>
 }

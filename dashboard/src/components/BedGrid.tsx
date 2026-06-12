@@ -35,17 +35,20 @@ const STATUS_COLOR: Record<BedStatus, string> = {
   maintenance: '#8D99AE',
 }
 
-// ── BED DETAIL SLIDE-IN PANEL ─────────────────────────────────────────────────
+// Fix B-12: Query bed_history_with_names view and display nurse name
+// Update BedDetailPanel component:
+
 function BedDetailPanel({ bed, onClose }: { bed: Bed; onClose: () => void }) {
   const [history, setHistory] = useState<BedStatusLog[]>([])
 
   useEffect(() => {
-    supabase.from('bed_status_logs')
-      .select('*')
+    // FIX: query bed_history_with_names view instead of bed_status_logs
+    supabase.from('bed_history_with_names')
+      .select('id, old_status, new_status, changed_at, changed_by_name, changed_by_role')
       .eq('bed_id', bed.id)
       .order('changed_at', { ascending: false })
       .limit(7)
-      .then(({ data }) => { if (data) setHistory(data) })
+      .then(({ data }) => { if (data) setHistory(data as BedStatusLog[]) })
   }, [bed.id])
 
   return (
@@ -76,8 +79,10 @@ function BedDetailPanel({ bed, onClose }: { bed: Bed; onClose: () => void }) {
         </p>
       </div>
 
-      {/* Status history */}
-      <h5 className="text-xs font-semibold text-[#4A5568] uppercase tracking-wide mb-2">Status History</h5>
+{/* Status History — updated to show who changed it */}
+      <h5 className="text-xs font-semibold text-[#4A5568] uppercase tracking-wide mb-2">
+        Status History
+      </h5>
       <div className="space-y-1.5">
         {history.length === 0 ? (
           <p className="text-xs text-[#8896AB]">No history recorded yet</p>
@@ -89,11 +94,23 @@ function BedDetailPanel({ bed, onClose }: { bed: Bed; onClose: () => void }) {
                 style={{ backgroundColor: STATUS_COLOR[log.new_status as BedStatus] || '#8D99AE' }}
               />
               <div>
-                <p className="text-xs text-[#0D1B2A] font-medium capitalize">{log.new_status}</p>
+                <p className="text-xs text-[#0D1B2A] font-medium capitalize">
+                  {log.new_status}
+                </p>
+                {/* NEW: show nurse name */}
+                {log.changed_by_name && (
+                  <p className="text-[10px] text-[#4A5568] font-medium">
+                    by {log.changed_by_name}
+                  </p>
+                )}
                 <p className="text-[10px] text-[#8896AB] font-mono">
-                  {new Date(log.changed_at).toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  {new Date(log.changed_at).toLocaleTimeString('en-EG', {
+                    hour: '2-digit', minute: '2-digit', hour12: false
+                  })}
                   {' · '}
-                  {new Date(log.changed_at).toLocaleDateString('en-EG', { day: '2-digit', month: 'short' })}
+                  {new Date(log.changed_at).toLocaleDateString('en-EG', {
+                    day: '2-digit', month: 'short',
+                  })}
                 </p>
               </div>
             </div>
@@ -103,6 +120,8 @@ function BedDetailPanel({ bed, onClose }: { bed: Bed; onClose: () => void }) {
     </div>
   )
 }
+
+
 
 // ── MAIN BED GRID ─────────────────────────────────────────────────────────────
 interface BedGridProps {

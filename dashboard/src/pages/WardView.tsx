@@ -1,11 +1,14 @@
 // src/pages/WardView.tsx
+// Fix B-09: Remove the manual bed_status_logs.insert — the DB trigger handles it.
+// Fix B-11: Add 'discharging' to local BedStatus type and STATUS_COLORS.
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { Sidebar } from '../components/Sidebar'
 import { cn } from '../lib/utils'
 
-type BedStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance' | 'reserved'
+// ── CHANGE 1: Update local BedStatus type (line ~7)
+type BedStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance' | 'reserved' | 'discharging'
 
 interface Bed {
   id: string
@@ -22,12 +25,14 @@ interface Ward {
   beds: Bed[]
 }
 
+// ── CHANGE 2: Add discharging to STATUS_COLORS
 const STATUS_COLORS: Record<BedStatus, { bg: string; text: string; label: string }> = {
-  available:   { bg: 'bg-[#F0FFF9]', text: 'text-[#00C896]', label: 'Available' },
-  occupied:    { bg: 'bg-[#F0FAFF]', text: 'text-[#4CC9F0]', label: 'Occupied' },
-  cleaning:    { bg: 'bg-[#FFFBF0]', text: 'text-[#D4A017]', label: 'Cleaning' },
-  maintenance: { bg: 'bg-[#FFF5F5]', text: 'text-[#EF233C]', label: 'Maintenance' },
-  reserved:    { bg: 'bg-[#F5F4F0]', text: 'text-[#8896AB]', label: 'EMS Reserved' },
+  available:   { bg: 'bg-[#F0FFF9]', text: 'text-[#00C896]',  label: 'Available'     },
+  occupied:    { bg: 'bg-[#F0FAFF]', text: 'text-[#4CC9F0]',  label: 'Occupied'      },
+  cleaning:    { bg: 'bg-[#FFFBF0]', text: 'text-[#D4A017]',  label: 'Cleaning'      },
+  maintenance: { bg: 'bg-[#FFF5F5]', text: 'text-[#EF233C]',  label: 'Maintenance'   },
+  reserved:    { bg: 'bg-[#F5F4F0]', text: 'text-[#8896AB]',  label: 'EMS Reserved'  },
+  discharging: { bg: 'bg-[#FFFDF0]', text: 'text-[#B8860B]',  label: 'Discharging'   },
 }
 
 export default function WardView() {
@@ -81,29 +86,38 @@ export default function WardView() {
     return () => { supabase.removeChannel(channel) }
   }, [hospitalId, fetchWards])
 
+  // ── CHANGE 3: handleStatusChange — REMOVE the manual insert block (lines ~96-101)
+  // BEFORE (broken):
+  //   await supabase.from('beds').update({ current_status: newStatus }).eq('id', selectedBed.id)
+  //   await supabase.from('bed_status_logs').insert({           <-- DELETE THIS BLOCK
+  //     bed_id: selectedBed.id,
+  //     old_status: selectedBed.current_status,
+  //     new_status: newStatus,
+  //     changed_at: new Date().toISOString()
+  //   })
+
+  // AFTER (fixed):
   const handleStatusChange = async (newStatus: BedStatus) => {
     if (!selectedBed) return
-    
-    // SECURITY: Block all changes if bed is locked by EMS
+
     if (selectedBed.ems_locked) {
-      alert("⚠️ Action Denied: Bed is reserved by EMS. You can only change status after patient arrival.")
-      return
+      if (newStatus !== 'occupied' && newStatus !== 'available') {
+        alert('Bed is reserved by EMS. You can only set it to Occupied (patient arrived) or Available (patient did not arrive).')
+        return
+      }
     }
-    
+
     setWards(prev => prev.map(w => ({
       ...w,
       beds: w.beds.map(b => b.id === selectedBed.id ? { ...b, current_status: newStatus } : b)
     })))
     setSelectedBed(null)
 
-    await supabase.from('beds').update({ current_status: newStatus }).eq('id', selectedBed.id)
-
-    await supabase.from('bed_status_logs').insert({
-      bed_id: selectedBed.id,
-      old_status: selectedBed.current_status,
-      new_status: newStatus,
-      changed_at: new Date().toISOString()
-    })
+    // DB trigger log_bed_status_change() handles the log insert automatically.
+    // Do NOT insert into bed_status_logs manually — that was the double-logging source.
+    await supabase.from('beds')
+      .update({ current_status: newStatus })
+      .eq('id', selectedBed.id)
   }
 
   return (
@@ -163,11 +177,17 @@ export default function WardView() {
               <h3 className="text-lg font-bold text-[#0D1B2A] mb-1">Bed {selectedBed.bed_number}</h3>
               {selectedBed.ems_locked && <p className="text-xs text-[#EF233C] font-bold mb-4">⚠️ Locked by EMS Dispatch</p>}
               <div className="space-y-2">
-                {(['available', 'occupied', 'cleaning', 'maintenance'] as BedStatus[]).map(status => (
+                {(['available', 'discharging', 'occupied', 'cleaning', 'maintenance'] as BedStatus[]).map(status => (
                   <button
                     key={status}
                     onClick={() => handleStatusChange(status)}
-                    className={cn('w-full py-3 rounded-xl text-sm font-bold uppercase', selectedBed.current_status === status ? 'border-2 border-[#0D1B2A] bg-white' : STATUS_COLORS[status].bg + ' ' + STATUS_COLORS[status].text)}
+                    disabled={status === 'reserved'} // reserved is EMS-only
+                    className={cn(
+                      'w-full py-3 rounded-xl text-sm font-bold uppercase',
+                      selectedBed.current_status === status
+                        ? 'border-2 border-[#0D1B2A] bg-white'
+                        : STATUS_COLORS[status].bg + ' ' + STATUS_COLORS[status].text
+                    )}
                   >
                     {STATUS_COLORS[status].label}
                   </button>

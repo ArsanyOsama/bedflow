@@ -16,3 +16,6 @@ nurse-app/.env
 
 # Supabase
 supabase/.env
+
+# OS
+.DS_Store
